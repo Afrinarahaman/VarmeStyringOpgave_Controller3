@@ -77,10 +77,11 @@ const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html><head>
   <title>Temperature Threshold Output Control</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   </head><body>
   <h2> Temperature with sensor</h2> 
   <h3>%TEMPERATURE% &deg;C</h3>
-  
+   <div id="chart-temperature" class="container"></div>
   <form action="/get">
     Temperature in day/night  <input type="number" step="0.1" name="day_night_input" required><br>
    
@@ -99,7 +100,49 @@ const char index_html[] PROGMEM = R"rawliteral(
    
     <input type="submit" value="Comfort">
   </form>
-</body></html>)rawliteral";
+</body>
+<script>
+var chartT = new Highcharts.Chart({
+  chart:{ renderTo : 'chart-temperature' },
+  title: { text: 'Current Temperature' },
+  series: [{
+    showInLegend: false,
+    data: []
+  }],
+  plotOptions: {
+    line: { animation: false,
+      dataLabels: { enabled: true }
+    },
+    series: { color: '#059e8a' }
+  },
+  xAxis: { type: 'datetime',
+    dateTimeLabelFormats: { second: '%H:%M:%S' }
+  },
+  yAxis: {
+    title: { text: 'Temperature (Celsius)' }
+    
+  },
+  credits: { enabled: false }
+});
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      var x = (new Date()).getTime(),
+          y = parseFloat(this.responseText);
+      //console.log(this.responseText);
+      if(chartT.series[0].data.length > 40) {
+        chartT.series[0].addPoint([x, y], true, true, true);
+      } else {
+        chartT.series[0].addPoint([x, y], true, false, true);
+      }
+    }
+  };
+  xhttp.open("GET", "/lastTemp", true);
+  xhttp.send();
+}, 30000 ) ;
+</script>
+</html>)rawliteral";
 
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
@@ -187,7 +230,10 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
-
+  server.on("/lastTemp", HTTP_GET, [](AsyncWebServerRequest *request){
+    Serial.print("XX");
+    request->send_P(200, "text/plain", lastTemperature.c_str());
+  });
   // Receive an HTTP GET request at <ESP_IP>/get?day_night_input=<inputMessage>&comfort_input=<inputMessage2>
   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
     // GET day_night_input value on <ESP_IP>/get?day_night_input=<inputMessage>
