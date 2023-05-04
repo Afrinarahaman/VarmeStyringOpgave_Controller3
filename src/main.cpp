@@ -141,7 +141,7 @@ setInterval(function ( ) {
   };
   xhttp.open("GET", "/lastTemp", true);
   xhttp.send();
-}, 10000 ) ;
+}, 30000 ) ;
 </script>
 </html>)rawliteral";
 
