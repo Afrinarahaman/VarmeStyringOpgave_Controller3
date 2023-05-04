@@ -70,7 +70,8 @@ float comfort_temperature;
 */
 
 /**
- * HTML web page to handle 2 input fields (day_night_input, comfort_input)
+ * HTML web page to handle 2 input fields (day_night_input, comfort_input) 
+ * og viser chart to romm temperature
  
  */
 const char index_html[] PROGMEM = R"rawliteral(
@@ -144,13 +145,21 @@ setInterval(function ( ) {
 </script>
 </html>)rawliteral";
 
+/**
+ * Hvis hjemmeside får ikke, det giver 404 error
+*/
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
 
+/**
+ * hjemmeside viser i port 80
+*/
 AsyncWebServer server(80);
 
-// Replaces placeholder with DS18B20 values
+/**
+ * Erstatter pladsholder med DS18B20-værdier
+  */
 String processor(const String& var){
   //Serial.println(var);
   if(var == "TEMPERATURE"){
@@ -165,6 +174,9 @@ String processor(const String& var){
   return String();
 }
 
+/**
+ * Flag variabel for at holde styr på, om triggere var aktiveret eller ej
+*/
 // Flag variable to keep track if triggers was activated or not
 bool triggerActive = false;
 
@@ -172,22 +184,44 @@ const char* PARAM_INPUT_1 = "day_night_input";
 const char* PARAM_INPUT_2 = "comfort_input";
 const char* PARAM_INPUT_3 = "start_time_input";
 const char* PARAM_INPUT_4 = "end_time_input";
-// Interval between sensor readings. Learn more about ESP32 timers: https://RandomNerdTutorials.com/esp32-pir-motion-sensor-interrupts-timers/
-unsigned long previousMillis = 0;     
-const long interval = 5000;    
 
+/**
+ * Interval mellem sensoraflæsninger
+*/
+// Interval between sensor readings
+unsigned long previousMillis = 0;     
+const long interval = 5000;  
+
+/**
+ * GPIO, hvor udgangen er tilsluttet
+*/
 // GPIO where the output is connected to
 const int output_daynight = 26;
 const int output_comfort = 25;
 
+/**
+ * GPIO, hvor DS18B20 er tilsluttet
+*/
 
 // GPIO where the DS18B20 is connected to
 const int oneWireBus = 27;     
+
+/**
+ * Konfigurer en oneWire-instans til at kommunikere med alle OneWire-enheder
+*/
 // Setup a oneWire instance to communicate with any OneWire devices
 OneWire oneWire(oneWireBus);
+
+/**
+ * Send vores oneWire reference til Dallas temperatursensor
+*/
 // Pass our oneWire reference to Dallas Temperature sensor 
 DallasTemperature sensors(&oneWire);
 
+
+/**
+ * sætter nuværende tid i 24hrs format i en variabel(current_time)
+*/
 void setTime(){
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
@@ -200,8 +234,12 @@ void setTime(){
    
 }
 
+
 void setup() {
   Serial.begin(115200);
+  /**
+   * Forbinder med Wi-Fi
+  */
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
@@ -209,24 +247,38 @@ void setup() {
     return;
   }
   Serial.println();
+  /**
+   * får IP addresse af ESP32
+  */
   Serial.print("ESP IP Address: http://");
   Serial.println(WiFi.localIP());
   
-
-  // Init and get the time
+/**
+ * Init og få tiden
+*/
+ 
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   setTime();
 
-//defining pinmode as LOW
+/**
+ * definere pinmode som LAV
+*/
+
   pinMode(output_daynight, OUTPUT);
   digitalWrite(output_daynight, LOW);
   pinMode(output_comfort, OUTPUT);
   digitalWrite(output_comfort, LOW);
   
-  // Start the DS18B20 sensor
+  /**
+   * Start DS18B20-sensoren
+  */
+ 
   sensors.begin();
   
-  // Send web page to client
+  /**
+   * Send webside til klient
+  */
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
@@ -234,9 +286,16 @@ void setup() {
     Serial.print("XX");
     request->send_P(200, "text/plain", lastTemperature.c_str());
   });
-  // Receive an HTTP GET request at <ESP_IP>/get?day_night_input=<inputMessage>&comfort_input=<inputMessage2>
+
+  /**
+   * Modtag en HTTP GET-anmodning på <ESP_IP>/get?day_night_input=<inputMessage>&comfort_input=<inputMessage2>
+  */
+  
   server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    // GET day_night_input value on <ESP_IP>/get?day_night_input=<inputMessage>
+    /**
+     * GET day_night_input værdi på <ESP_IP>/get?day_night_input=<inputMessage>
+    */
+   
     if (request->hasParam(PARAM_INPUT_1)) {
       inputMessage = request->getParam(PARAM_INPUT_1)->value();
       day_night_temp= (request->getParam(PARAM_INPUT_1)->value()).toFloat();
@@ -245,8 +304,10 @@ void setup() {
       startTimeInput=(request->getParam(PARAM_INPUT_3)->value()).toInt();
       endTimeInput=(request->getParam(PARAM_INPUT_4)->value()).toInt();
     }
-       
-      // GET comfort_input value on <ESP_IP>/get?comfort_input=<inputMessage2>
+    /**
+     * GET comfort_input værdi på <ESP_IP>/get?comfort_input=<inputMessage2>
+    */
+
     else if (request->hasParam(PARAM_INPUT_2)) {
         inputMessage = request->getParam(PARAM_INPUT_2)->value();
         inputParam = PARAM_INPUT_2;
@@ -271,34 +332,51 @@ void setup() {
 void loop() {
   
   unsigned long currentMillis = millis();
-  // Determine desired temperature based on mode and user settings
+  /**
+   * erklære en variabel for at gemme den ønskede temperatur
+  */
+   
   float desiredTemp;
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
     sensors.requestTemperatures();
 
+  /**
+  * Kald sensors.requestTemperatures() for at udstede en global temperatur 
+  * og anmodninger til alle enheder på bussen
+  */
     // Temperature in Celsius degrees 
     float temperature = sensors.getTempCByIndex(0);
     Serial.print("Current room temperature: ");
     Serial.print(temperature);
     Serial.println(" *C");
     
+    /**
+     * får last temperaturenv fra sensor
+    */
     lastTemperature = String(temperature);
 
+/**
+ * kontrollerer, om inputtiden er lig med eller større end den nuværende tid og gemmer det i et variabel
+*/
     // Determine which mode to use based on current time and schedule
   bool is_room_temp_day_night = (current_time >=startTimeInput  && 
                              current_time < endTimeInput);
  
-
-    
+ /**
+  * Tjek om temperaturen er day_night eller ej
+ */
     // Check if temperature is day_night or not
     if(inputMessage && inputParam == PARAM_INPUT_1 && is_room_temp_day_night   ){
       //String message = String("Day_night temperature is being set. which is: ") + 
                           String(temperature) + String("C");
      
       
-     
+     /**
+      * Hvis klient giver input day_night tempemperature med starttime og endtime, 
+      * så tænder Rød LED og slukker Gul LED   
+     */
       desiredTemp=day_night_temp;
       Serial.println("Desired temp for day_night with starttime and endtime");
       Serial.print(desiredTemp);
@@ -310,6 +388,10 @@ void loop() {
       
       
     }
+    /**
+      * Hvis klient giver input til comfort temperature, 
+      * så tænder Gul LED og slukker Rød LED  
+     */
     // Check if temperature is comfort or not
     else if(inputMessage && inputParam == PARAM_INPUT_2 )
     {
@@ -322,6 +404,10 @@ void loop() {
       digitalWrite(output_daynight, LOW);
     }
    // else digitalWrite(output_comfort, HIGH);
+    /**
+      * Hvis klient giver input day_night tempemperature med forkert starttime og endtime, 
+      * så spørger om at sætte rigtig tid   
+     */
    else if(inputMessage && inputParam == PARAM_INPUT_1 && !is_room_temp_day_night )
    {
    
