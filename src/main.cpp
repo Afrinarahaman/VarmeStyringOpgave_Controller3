@@ -3,7 +3,7 @@
  * \brief 
  *
  * \author Afrina Rahaman
- * \date  04 May 2023
+ * \date  08 May 2023
  * OPGAVE:
  * Varme styring til et hus eller lejlighed. 
  * Fra en webside på en arduino eller en mobil kunne du sætte en ønsket temperatur i et eller flere rum. 
@@ -11,6 +11,7 @@
  * Skiftet mellem spare og komfort sker så ud fra et tidsskema. 
  * F.eks kl. 06:30 tænder varmen og opvarmer så huset til 
  * komfort temperatur. Kl 8:30 sænkes temperaturen så igen til spare temperatur.
+ * Det viser også en chart for room temperature
 ***********************************************************************/
 
 /**
