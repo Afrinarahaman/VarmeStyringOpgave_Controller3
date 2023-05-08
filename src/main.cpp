@@ -193,7 +193,8 @@ unsigned long previousMillis = 0;
 const long interval = 5000;  
 
 /**
- * GPIO, hvor udgangen er tilsluttet
+ * GPIO, hvor output er tilsluttet. GPIO_26 er for Daynight som er rødLED
+ * og GPIO_25 er for comfort som er gulLED
 */
 // GPIO where the output is connected to
 const int output_daynight = 26;
